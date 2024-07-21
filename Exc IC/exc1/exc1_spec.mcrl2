@@ -1,0 +1,42 @@
+sort
+    Cor = struct Verde | Amarelo | Vermelho;  % Define um tipo de dados chamado Cor, que pode ser Verde, Amarelo ou Vermelho
+
+map
+    proxCor: Cor -> Cor;  % Define uma função chamada proxCor que mapeia um eestadoado do semáforo para o próximo estado
+
+eqn 
+    proxCor(Verde) = Amarelo;    % Verde -> Amarelo
+    proxCor(Amarelo) = Vermelho; % Amarelo -> Vermelho
+	proxCor(Vermelho) = Verde;   % Vermelho -> Verde
+
+act
+    bloqVerde;        % Ação para bloquear o estado verde do semáforo
+    desbloqVerde;     % Ação para desbloquear o estado verde do semáforo
+    mudaVerde;        % Ação para mudar o semáforo para verde
+    mudaAmarelo;      % Ação para mudar o semáforo para amarelo
+	mudaVermelho;     % Ação para mudar o semáforo para vermelho
+	bloq;             % Ação para bloquear o semáforo    
+	desbloq;          % Ação para desbloquear o semáforo
+   
+proc
+
+	% L -> comportamento de um semáforo
+    L(estado: Cor) =  
+             (proxCor(estado) == Verde) -> mudaVerde.L(proxCor(estado))    	    % Se a proxima cor for verde
+             + (proxCor(estado) == Vermelho) -> mudaVermelho.L(proxCor(estado)) % Se a proxima cor for vermelho
+             + (proxCor(estado) == Amarelo) -> mudaAmarelo.L(proxCor(estado));  % Se a proxima cor for amarelo
+
+	% C -> Controla o ciclo do semaforo
+    C(counter : Int) =   % Numero representante do semaforo
+			(counter < 2) -> bloqVerde.desbloqVerde.C(counter + 1)       		% Se o estado for menor que 2, bloqueia e desbloqueia o estado verde do semáfor
+			+ (counter == 2) -> bloqVerde.desbloqVerde.C(0);                    % Se o estado for igual a 2, reinicia o ciclo do semáforo
+
+	% T -> processo global
+    T = 
+        allow({desbloq, bloq, mudaVermelho},                                               % Define as ações permitidas
+            comm ({bloqVerde | mudaVerde -> bloq, desbloqVerde | mudaAmarelo -> desbloq},  % Define as comunicações entre ações e procs
+                C(0) || L(Vermelho) || L(Vermelho) ||  L(Vermelho)                          % Define os processos do sistema. - Todos os semaforos iniciados a vermelho
+        ));
+
+init T;  																				   % Inicia o sistema
+

@@ -1,0 +1,116 @@
+% Specification for the rope bridge problem
+% (based on Bas Ploeger, 2008)
+
+% Adventurers are identified by their "speeds", i.e. the number of
+% minutes they need for crossing the bridge. For this we use the basic
+% integer data type of mCRL2 called 'Int'.
+
+% Data type for the position of adventurers and the flashlight.
+% Initially, they are all on the 'start' side of the bridge. In the end,
+% they should all have reached the 'finish' side.
+sort Position = struct start | finish;
+
+
+act
+    % Action declarations:
+    % - 'forward'  means:  from start to finish
+    % - 'back'     means:  from finish to start
+
+    % The flashlight moves forward together with two adventurers,
+    % identified by the action's parameters.
+    forward_flashlight: Int # Int;
+
+    % The flashlight moves back together with one adventurer, identified
+    % by the action's parameter.
+    back_flashlight: Int;
+
+
+%%% TODO (Exercise 1): 
+%%% Add action declarations for Adventurer process here
+act
+    % Action declarations for Adventurer process:
+    forward_adventurer: Int;
+    back_adventurer: Int;
+
+proc Adventurer(speed:Int, pos:Position) =
+       (pos == start) ->
+         % Case 1: Crossing forward
+         forward_adventurer(speed) . Adventurer(speed, finish)
+       <> 
+         % Case 2: Crossing back
+         back_adventurer(speed) . Adventurer(speed, start);
+
+%%% TODO (Exercise 2):
+%%% Add action declarations for synchronised events.
+% Synchronisation between actions
+% Declare actions for synchronization
+act
+    % Ação para mover 2 aventureiros e uma lanterna para frente sobre a ponte
+    forward_2_adventurers_and_flashlight: Int # Int # Int;
+
+    % Ação para mover 1 aventureiro e uma lanterna de volta sobre a ponte
+    back_1_adventurer_and_flashlight: Int # Int;
+
+% Adicionar sincronização entre as ações
+allow
+    forward_2_adventurers_and_flashlight(sync, sync', sync'') & forward_flashlight(sync, sync') & forward_adventurer(sync'') 
+        -> forward_2_adventurers_and_flashlight(sync, sync', sync'');
+        
+    back_1_adventurer_and_flashlight(sync, sync') & back_flashlight(sync') & back_adventurer(sync) 
+        -> back_1_adventurer_and_flashlight(sync, sync');
+
+% Atualizar a definição do processo inicial
+init Flashlight(start) ||| Adventurer(1, start) ||| Adventurer(2, start) ||| Adventurer(3, start) ||| Adventurer(4, start);
+
+
+%%% TODO (Exercise 5):
+%%% Add action declarations for Referee process.
+% Action declarations for Referee process
+    UpdateCounter: Int;     % Update the counter
+    ReportTotalTime: Int;   % Report the total time
+
+proc Referee(counter: Int) =
+    UpdateCounter(counter) . Referee(counter + 1)   % Update counter and continue
+    +
+    ReportTotalTime(counter) . Referee(counter);    % Report total time and continue
+
+allow
+    % Synchronize with adventurers to update counter
+    UpdateCounter(counter) && (CrossStartToFinish(_) || CrossFinishToStart(_)) && Referee(counter)
+    +
+    % Synchronize with adventurers to report total time when all finish
+    AllAdventurersFinish && ReportTotalTime(counter) && Referee(counter);
+
+
+% The Flashlight process models the flashlight:
+% 1. If it is at the 'start' side, it can move forward together with any
+%    pair of adventurers.
+% 2. If it is at the 'finish' side, it can move back together with any
+%    adventurer.
+proc Flashlight(pos:Position) =
+       (pos == start) ->
+         % Case 1.
+         sum s,s':Int . forward_flashlight(s,s') . Flashlight(finish)
+       <> 
+         % Case 2.
+         sum s:Int . back_flashlight(s) . Flashlight(start);
+
+
+%%% TODO (Exercise 1):
+%%% Add Adventurer process definition here
+
+
+%%% TODO (Exercise 5):
+%%% Add Referee process definition here
+
+
+
+% Initial process definition: the system currently only consists of a
+% flashlight at the 'start' side.
+init  Flashlight(start) ;
+
+%%% TODO (Exercise 2):
+%%% Add the four Adventurer processes to this definition
+
+%%% TODO (Exercise 5):
+%%% Add the Referee process to this definition
